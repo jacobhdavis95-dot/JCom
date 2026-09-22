@@ -1,0 +1,10 @@
+{
+  "name": "JCom — Site Walks & Punch Lists",
+  "short_name": "JCom",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#0b2f4f",
+  "description": "A field documentation and punch-list resource for construction project managers.",
+  "icons": []
+}
