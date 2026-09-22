@@ -89,7 +89,7 @@ function renderDashboard() {
   app.innerHTML = `
     <section class="hero">
       <div class="hero-content">
-        <span class="eyebrow" style="color:#91c6eb">JCom field command</span>
+        <span class="eyebrow" style="color:#91c6eb">Your field assistant</span>
         <h2>Walk faster. Document clearly. Close the loop.</h2>
         <p>Keep plans, field evidence, PM notes, and punch-list progress together—without replacing the judgment of your project managers.</p>
         <div class="hero-actions">
