@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b2f4f" />
+  <meta name="description" content="JCom helps construction project managers walk jobs, create punch lists, and keep documentation together." />
+  <title>JCom | Field Documentation</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#dashboard" aria-label="JCom home">
+        <span class="brand-mark">J</span>
+        <span><strong>JCom</strong><small>Field command</small></span>
+      </a>
+      <nav id="nav" class="nav" aria-label="Primary navigation"></nav>
+      <div class="sidebar-card">
+        <span class="eyebrow">Field principle</span>
+        <strong>PM judgment stays in control.</strong>
+        <p>JCom organizes evidence and suggests items. Your team approves the final record.</p>
+      </div>
+      <div class="user-chip">
+        <span class="avatar">JD</span>
+        <span><strong>Jacob Davis</strong><small>Installation Manager</small></span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <button class="icon-button mobile-menu" id="menu-button" aria-label="Open menu">☰</button>
+        <div>
+          <span class="eyebrow" id="page-eyebrow">Overview</span>
+          <h1 id="page-title">Good morning, Jacob</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="search-button" aria-label="Search">⌕</button>
+          <button class="button primary" data-action="new-walk"><span>＋</span> Start site walk</button>
+        </div>
+      </header>
+      <section id="app" class="content" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="modal-root"></div>
+  <input id="document-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" multiple hidden />
+  <input id="video-input" type="file" accept="video/*" capture="environment" hidden />
+  <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />
+  <script type="module" src="app.js"></script>
+</body>
+</html>
