@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">JCom</title>
+  <desc id="desc">A red and blue construction shield with a roofline, J monogram, and completion check.</desc>
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#123d68"/>
+      <stop offset="1" stop-color="#071b2d"/>
+    </linearGradient>
+    <linearGradient id="check" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff624f"/>
+      <stop offset="1" stop-color="#d92231"/>
+    </linearGradient>
+  </defs>
+  <path d="M48 3 88 17v31c0 23-14 37-40 45C22 85 8 71 8 48V17Z" fill="url(#shield)" stroke="#fff" stroke-width="4"/>
+  <path d="m20 39 28-21 28 21" fill="none" stroke="#56b8ff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M57 31v26c0 11-7 18-18 18-9 0-16-5-18-13l11-4c1 4 3 6 7 6 5 0 7-3 7-8V31Z" fill="#fff"/>
+  <path d="m50 66 10 9 18-23" fill="none" stroke="url(#check)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
