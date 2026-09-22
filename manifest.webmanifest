@@ -3,8 +3,15 @@
   "short_name": "JCom",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f4f6f8",
-  "theme_color": "#0b2f4f",
+  "background_color": "#071b2d",
+  "theme_color": "#071b2d",
   "description": "A field documentation and punch-list resource for construction project managers.",
-  "icons": []
+  "icons": [
+    {
+      "src": "assets/jcom-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
