@@ -15,7 +15,7 @@ JCom assists project managers with consistent walks and clear documentation. It 
 | Queue/workers | PDF extraction, thumbnailing, video frame selection, report generation |
 | Document index | Plan sheets, truss identifiers, revisions, detail references, redlines |
 | Suggestion service | Returns draft observations with evidence, source, confidence, and limitations |
-| Identity | Company SSO plus role-based access for managers, PMs, safety, and read-only users |
+| Identity | Company SSO plus role-based access for managers, project managers, subcontractors, and read-only users |
 
 ## Suggested workflow
 
