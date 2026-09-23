@@ -37,6 +37,7 @@
           <h1 id="page-title">Good morning, Jacob</h1>
         </div>
         <div class="top-actions">
+          <span id="connection-status" class="connection-status" aria-live="polite">● Online</span>
           <button class="icon-button" id="search-button" aria-label="Search">⌕</button>
           <button class="button primary" data-action="new-walk"><span>＋</span> Start site walk</button>
         </div>
@@ -50,6 +51,7 @@
   <input id="document-input" type="file" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx" multiple hidden />
   <input id="video-input" type="file" accept="video/*" capture="environment" hidden />
   <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />
+  <input id="packet-input" type="file" accept="application/json,.json" hidden />
   <script type="module" src="app.js"></script>
 </body>
 </html>
