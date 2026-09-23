@@ -36,6 +36,7 @@ const seed = {
 };
 
 let state = load();
+state.workflow ||= {};
 let currentFilter = "All";
 let searchTerm = "";
 
@@ -61,6 +62,10 @@ function load() {
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function activeJob() { return state.jobs.find((job) => job.id === state.activeJob) || state.jobs[0]; }
 function jobPunches(jobId = state.activeJob) { return state.punches.filter((item) => item.jobId === jobId); }
+function jobWorkflow(jobId = state.activeJob) {
+  state.workflow[jobId] ||= { media: [], status: "documents", suggestions: [] };
+  return state.workflow[jobId];
+}
 function esc(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
 function route() { return location.hash.replace("#", "") || "dashboard"; }
 function statusClass(status) { return status.toLowerCase().replaceAll(" ", "-"); }
@@ -93,7 +98,7 @@ function renderDashboard() {
         <h2>Walk faster. Document clearly. Close the loop.</h2>
         <p>Keep plans, field evidence, PM notes, and punch-list progress together—without replacing the judgment of your project managers.</p>
         <div class="hero-actions">
-          <button class="button primary" data-action="new-walk">◉ Start site walk</button>
+          <button class="button primary" data-action="new-walk">① Begin guided review</button>
           <button class="button" data-action="new-punch">＋ Quick punch item</button>
         </div>
       </div>
@@ -156,35 +161,71 @@ function renderJobs() {
 
 function renderWalks() {
   const job = activeJob();
-  setHeading(`${job.lot} · ${job.community}`, "Guided site walk");
+  const flow = jobWorkflow();
+  const docs = state.docs.filter(doc => doc.jobId === job.id);
+  const hasDocs = docs.length > 0;
+  const hasMedia = flow.media.length > 0;
+  const hasFindings = flow.suggestions.length > 0;
+  const currentStep = !hasDocs ? 1 : !hasMedia ? 2 : !hasFindings ? 3 : 4;
+  setHeading(`${job.lot} · ${job.community}`, "Guided field review");
   app.innerHTML = `
-    <section class="walk-layout">
-      <div class="camera-stage">
-        <div class="camera-hud"><span class="live-dot">● READY TO CAPTURE</span><span>Field mode · ${esc(job.lot)}</span></div>
-        <div class="scan-corners"></div>
-        <div class="camera-copy">
-          <div class="record-icon"></div>
-          <h2>Capture the work, not paperwork</h2>
-          <p>Record a slow walkthrough or upload an existing video. JCom keeps the media with this job and prepares it for review.</p>
-          <div class="camera-actions"><button class="button primary" data-action="record-video">Record / upload video</button><button class="button" data-action="take-photo">Take photo</button></div>
-        </div>
-      </div>
-      <aside class="panel">
-        <div class="panel-head"><div><span class="eyebrow">Walk coverage</span><h3>Framing first walk</h3></div><strong>72%</strong></div>
-        <div class="panel-body">
-          <div class="checklist">
-            ${walkCheck("Exterior elevations", "4 sides captured", true)}
-            ${walkCheck("First-floor openings", "Windows and doors", true)}
-            ${walkCheck("Bearing & beams", "Reference structural pages", true)}
-            ${walkCheck("Main stair", "Support, backing, alignment", false)}
-            ${walkCheck("Second-floor framing", "Rooms and openings", false)}
-            ${walkCheck("Truss placement", "Layout and visible tags", false)}
-          </div>
-          <div class="notice" style="margin-top:14px"><strong>PM-controlled review</strong><br>Future automated suggestions will remain drafts until a project manager approves them. JCom is a documentation resource—not an engineering determination.</div>
-          <button class="button navy" style="width:100%;margin-top:14px" data-action="finish-walk">Finish and review walk</button>
-        </div>
-      </aside>
+    <section class="workflow-intro">
+      <div><span class="eyebrow">Simple four-step process</span><h2>From job documents to a clear punch list</h2><p>Complete each step in order. JCom keeps everything attached to ${esc(job.lot)} and shows you exactly what comes next.</p></div>
+      <span class="workflow-current">Step ${currentStep} of 4</span>
+    </section>
+    <section class="workflow-rail" aria-label="Field review progress">
+      ${workflowRailStep(1, "Documents", "Plans & references", hasDocs, currentStep)}
+      ${workflowRailStep(2, "Walkthrough", "Video & photos", hasMedia, currentStep)}
+      ${workflowRailStep(3, "Generate", "Draft findings", hasFindings, currentStep)}
+      ${workflowRailStep(4, "PM review", "Publish punch list", false, currentStep)}
+    </section>
+    <section class="workflow-stack">
+      ${workflowDocuments(docs, currentStep)}
+      ${workflowCapture(flow, hasDocs, currentStep)}
+      ${workflowGenerate(flow, hasMedia, currentStep)}
+      ${workflowReview(flow, hasFindings, currentStep)}
     </section>`;
+}
+
+function workflowRailStep(number, title, detail, complete, current) {
+  const stateClass = complete ? "complete" : current === number ? "current" : current > number ? "complete" : "locked";
+  return `<div class="rail-step ${stateClass}"><span class="rail-number">${complete ? "✓" : number}</span><span><strong>${title}</strong><small>${detail}</small></span></div>`;
+}
+
+function workflowDocuments(docs, current) {
+  return `<article class="workflow-card ${current === 1 ? "active" : "complete"}">
+    <div class="workflow-card-head"><span class="step-badge">1</span><div><span class="eyebrow">Start here</span><h3>Upload the job documents</h3><p>Add everything JCom should reference before reviewing the walkthrough.</p></div><span class="step-state ${docs.length ? "done" : "needed"}">${docs.length ? `✓ ${docs.length} uploaded` : "Required"}</span></div>
+    <div class="document-types"><span>▤ Building plans</span><span>⌂ Truss layout</span><span>✓ Truss seals</span><span>✎ Redlines</span><span>＋ Other documents</span></div>
+    ${docs.length ? `<div class="uploaded-list">${docs.slice(-5).map(doc => `<span><strong>${esc(doc.name)}</strong><small>${esc(doc.type)}</small></span>`).join("")}</div>` : `<div class="step-help">Upload the current approved plan set and every document the PM may need during the walk.</div>`}
+    <button class="button ${docs.length ? "" : "primary"}" data-action="upload-doc">${docs.length ? "＋ Add more documents" : "↑ Upload plans and documents"}</button>
+  </article>`;
+}
+
+function workflowCapture(flow, unlocked, current) {
+  return `<article class="workflow-card ${current === 2 ? "active" : ""} ${unlocked ? "" : "locked"}">
+    <div class="workflow-card-head"><span class="step-badge">2</span><div><span class="eyebrow">Capture the site</span><h3>Add the walkthrough video and photos</h3><p>Record slowly and capture every room, opening, connection, and area needing a closer look.</p></div><span class="step-state ${flow.media.length ? "done" : "needed"}">${flow.media.length ? `✓ ${flow.media.length} file${flow.media.length === 1 ? "" : "s"}` : unlocked ? "Next step" : "Locked"}</span></div>
+    ${unlocked ? `<div class="capture-actions"><button class="capture-button video" data-action="record-video"><span>▶</span><strong>Record or upload video</strong><small>Use one slow, continuous walkthrough</small></button><button class="capture-button photo" data-action="take-photo"><span>▧</span><strong>Add site photos</strong><small>Capture close-ups and missed areas</small></button></div>${flow.media.length ? `<div class="media-strip">${flow.media.map(item => `<span>${item.kind === "video" ? "▶" : "▧"} ${esc(item.name)}</span>`).join("")}</div>` : ""}` : `<div class="locked-message">Complete Step 1 to unlock field capture.</div>`}
+  </article>`;
+}
+
+function workflowGenerate(flow, unlocked, current) {
+  return `<article class="workflow-card ${current === 3 ? "active" : ""} ${unlocked ? "" : "locked"}">
+    <div class="workflow-card-head"><span class="step-badge">3</span><div><span class="eyebrow">JCom review</span><h3>Generate what may be missing or needed</h3><p>JCom organizes possible plan differences, visible incomplete work, and areas that could not be verified.</p></div><span class="step-state ${flow.suggestions.length ? "done" : "needed"}">${flow.suggestions.length ? `✓ ${flow.suggestions.length} drafts` : unlocked ? "Ready" : "Locked"}</span></div>
+    ${unlocked ? `<div class="generate-box"><span class="generate-icon">◆</span><div><strong>${flow.suggestions.length ? "Draft findings are ready" : "Documents and field media are ready"}</strong><p>${flow.suggestions.length ? "Continue to Step 4 to review each item before it becomes part of the punch list." : "Generate a PM review queue using the uploaded references and walkthrough evidence."}</p></div><button class="button primary" data-action="analyze-walk">${flow.suggestions.length ? "Regenerate drafts" : "Generate draft findings"}</button></div>` : `<div class="locked-message">Complete the walkthrough upload to unlock generation.</div>`}
+    <div class="notice"><strong>PM-controlled documentation:</strong> Generated observations are drafts—not engineering decisions or code-compliance determinations.</div>
+  </article>`;
+}
+
+function workflowReview(flow, unlocked, current) {
+  const approved = flow.suggestions.filter(item => item.approved).length;
+  return `<article class="workflow-card ${current === 4 ? "active" : ""} ${unlocked ? "" : "locked"}">
+    <div class="workflow-card-head"><span class="step-badge">4</span><div><span class="eyebrow">Final PM decision</span><h3>Review and create the punch list</h3><p>Approve, edit, or leave out every draft. Only approved items enter the official job record.</p></div><span class="step-state ${approved ? "done" : "needed"}">${unlocked ? `${approved}/${flow.suggestions.length} approved` : "Locked"}</span></div>
+    ${unlocked ? `<div class="finding-list">${flow.suggestions.map(findingCard).join("")}</div><button class="button navy" data-action="continue-punch">View official punch list →</button>` : `<div class="locked-message">Generate the draft findings to unlock PM review.</div>`}
+  </article>`;
+}
+
+function findingCard(item, index) {
+  return `<div class="finding ${item.approved ? "approved" : ""}"><span class="finding-icon">${item.approved ? "✓" : "!"}</span><div><strong>${esc(item.title)}</strong><p>${esc(item.location)} · ${esc(item.reference)}</p><small>${esc(item.reason)}</small></div><button class="button small ${item.approved ? "" : "primary"}" data-action="approve-suggestion" data-index="${index}" ${item.approved ? "disabled" : ""}>${item.approved ? "Added" : "Approve"}</button></div>`;
 }
 
 function walkCheck(title, detail, done) {
@@ -298,6 +339,25 @@ document.addEventListener("click", (event) => {
   if (action === "upload-doc") document.querySelector("#document-input").click();
   if (action === "record-video") document.querySelector("#video-input").click();
   if (action === "take-photo") document.querySelector("#photo-input").click();
+  if (action === "analyze-walk") {
+    const flow = jobWorkflow();
+    flow.status = "review";
+    flow.suggestions = [
+      { title: "Opening requires PM verification", location: "Kitchen — rear wall", reference: "Architectural plan A3.1", reason: "The walkthrough view should be checked against the uploaded opening detail.", approved: false },
+      { title: "Visible framing item may be incomplete", location: "Main stair — landing", reference: "Plan detail A5.2", reason: "Review the captured area for backing and alignment before closing the walk.", approved: false },
+      { title: "Area not fully verified in walkthrough", location: "Second floor — bedroom 3", reference: "Truss layout", reason: "Add a closer image of the truss tag and connection before final verification.", approved: false }
+    ];
+    save(); showToast("Draft review generated — PM approval required"); renderWalks();
+  }
+  if (action === "approve-suggestion") {
+    const flow = jobWorkflow();
+    const suggestion = flow.suggestions[Number(actionEl.dataset.index)];
+    if (suggestion && !suggestion.approved) {
+      state.punches.unshift({ ...makePunch({ title: suggestion.title, location: suggestion.location, reference: suggestion.reference, notes: suggestion.reason, source: "JCom draft — PM approved", priority: "Standard" }, jobPunches()), jobId: state.activeJob });
+      suggestion.approved = true; save(); showToast("Approved and added to the punch list"); renderWalks();
+    }
+  }
+  if (action === "continue-punch") location.hash = "punch";
   if (action === "finish-walk") { showToast("Walk saved for PM review"); location.hash = "punch"; }
   if (action === "print") window.print();
   if (action === "close-modal") closeModal();
@@ -309,18 +369,27 @@ document.addEventListener("click", (event) => {
 document.querySelector("#document-input").addEventListener("change", (event) => {
   const today = new Date().toISOString().slice(0, 10);
   [...event.target.files].forEach(file => state.docs.push({ id: `doc-${Date.now()}-${file.name}`, jobId: state.activeJob, name: file.name, type: file.name.split(".").pop().toUpperCase(), detail: `${Math.max(1, Math.round(file.size / 1024))} KB · Uploaded file`, uploaded: today, by: "Jacob Davis" }));
-  save(); event.target.value = ""; showToast("Documents added to the job record"); renderDocuments();
+  jobWorkflow().status = "capture";
+  save(); event.target.value = ""; showToast("Documents uploaded — Step 2 is ready"); route() === "walks" ? renderWalks() : renderDocuments();
 });
 
 document.querySelector("#video-input").addEventListener("change", (event) => {
   if (!event.target.files.length) return;
-  showToast("Walkthrough attached — automated review service comes next");
+  const flow = jobWorkflow();
+  [...event.target.files].forEach(file => flow.media.push({ kind: "video", name: file.name, size: file.size }));
+  flow.status = "generate";
+  showToast("Walkthrough added — Step 3 is ready");
   state.activities.unshift({ icon: "◉", title: "Walkthrough video attached", detail: `${activeJob().lot} · Awaiting PM review`, time: "Just now" }); save(); event.target.value = "";
+  if (route() === "walks") renderWalks();
 });
 
 document.querySelector("#photo-input").addEventListener("change", (event) => {
   const file = event.target.files[0]; if (!file) return;
-  const reader = new FileReader(); reader.onload = () => openPunchModal({ title: "Field photo requiring review", photo: reader.result }, true); reader.readAsDataURL(file); event.target.value = "";
+  const flow = jobWorkflow();
+  flow.media.push({ kind: "photo", name: file.name, size: file.size });
+  flow.status = "generate";
+  save(); event.target.value = ""; showToast("Site photo added to the walkthrough");
+  if (route() === "walks") renderWalks();
 });
 
 document.querySelector("#menu-button").addEventListener("click", () => document.body.classList.toggle("menu-open"));
