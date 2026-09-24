@@ -1,5 +1,5 @@
-const CACHE = "jcom-v5";
-const APP = ["./", "./index.html", "./styles.css?v=5", "./app.js?v=5", "./core.mjs", "./manifest.webmanifest", "./assets/jcom-logo.svg", "./assets/bfs-report-logo.svg"];
+const CACHE = "jcom-v6";
+const APP = ["./", "./index.html", "./styles.css?v=6", "./app.js?v=6", "./core.mjs", "./manifest.webmanifest", "./assets/jcom-logo.svg", "./assets/bfs-report-logo.svg"];
 self.addEventListener("install", (event) => event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP))));
 self.addEventListener("activate", (event) => event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))));
 self.addEventListener("fetch", (event) => {
