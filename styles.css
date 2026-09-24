@@ -563,11 +563,28 @@ body {
 .report-section { margin-top: 28px; }
 .section-title { margin-bottom: 12px; }
 .section-title h3 { margin: 3px 0; }
-.report-table { display: grid; grid-template-columns: repeat(2,1fr); gap: 7px; }
-.report-table > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; }
-.report-table strong, .report-table span { display: block; font-size: 10px; line-height: 1.35; }
-.report-table strong { margin-bottom: 3px; }
-.report-table span { margin-top: 3px; color: var(--muted); }
+.formal-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: white; }
+.report-formal-table { width: 100%; min-width: 720px; border-collapse: collapse; text-align: left; font-size: 11px; }
+.report-formal-table th { padding: 10px 11px; border-right: 1px solid rgba(255,255,255,.16); background: var(--navy); color: white; font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
+.report-formal-table th:last-child { border-right: 0; }
+.report-formal-table td { padding: 11px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.4; }
+.report-formal-table td:last-child { border-right: 0; }
+.report-formal-table tbody tr:last-child td { border-bottom: 0; }
+.report-formal-table tbody tr:nth-child(even) { background: #f7f9fa; }
+.report-formal-table td > strong, .report-formal-table td > small { display: block; }
+.report-formal-table td > small { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.report-formal-table td > small b { color: var(--ink); }
+.table-item-number { color: var(--blue); letter-spacing: .04em; white-space: nowrap; }
+.empty-table-cell { padding: 20px !important; color: var(--muted); text-align: center; }
+.document-register-table th:nth-child(1) { width: 38%; }
+.document-register-table th:nth-child(2) { width: 27%; }
+.document-register-table th:nth-child(3) { width: 17%; }
+.document-register-table th:nth-child(4) { width: 18%; }
+.punch-list-table th:nth-child(1) { width: 9%; }
+.punch-list-table th:nth-child(2) { width: 35%; }
+.punch-list-table th:nth-child(3) { width: 18%; }
+.punch-list-table th:nth-child(4) { width: 18%; }
+.punch-list-table th:nth-child(5) { width: 20%; }
 .timeline { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px 22px; }
 .markup-modal { width: min(950px, 100%); }
 #markup-canvas { display: block; max-width: 100%; max-height: 65vh; margin: auto; border-radius: 10px; touch-action: none; background: #dfe6ea; }
@@ -601,7 +618,7 @@ body {
   .finding-actions .button { flex: 1 1 42%; }
   .setup-grid { grid-template-columns: 1fr; }
   .report-metrics { grid-template-columns: 1fr 1fr; }
-  .report-table, .timeline { grid-template-columns: 1fr; }
+  .timeline { grid-template-columns: 1fr; }
   .report-head { display: block; }
   .report-head > div:last-child { margin-top: 12px; text-align: left; }
   .tool-actions { width: 100%; }
@@ -654,10 +671,15 @@ body {
   .report-metrics { gap: 2mm; margin-bottom: 7mm; }
   .report-metrics span { padding: 3mm; }
   .report-section { margin-top: 7mm; }
-  .report-table > div, .punch-card, .activity { break-inside: avoid; page-break-inside: avoid; }
-  .punch-grid { grid-template-columns: 1fr 1fr; gap: 4mm; }
-  .punch-card { box-shadow: none; }
-  .punch-photo { height: 28mm; }
+  .formal-table-wrap { overflow: visible; border: 0; border-radius: 0; }
+  .report-formal-table { min-width: 0; table-layout: fixed; font-size: 7.5pt; }
+  .report-formal-table thead { display: table-header-group; }
+  .report-formal-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .report-formal-table th { padding: 2.2mm 2mm; font-size: 6.5pt; }
+  .report-formal-table td { padding: 2.3mm 2mm; line-height: 1.3; }
+  .report-formal-table td > small { margin-top: 1mm; font-size: 6.5pt; line-height: 1.35; }
+  .report-formal-table .status { padding: 1mm 1.5mm; font-size: 6pt; }
+  .activity { break-inside: avoid; page-break-inside: avoid; }
   .timeline { gap: 4mm; }
   .notice { break-inside: avoid; page-break-inside: avoid; }
 }
