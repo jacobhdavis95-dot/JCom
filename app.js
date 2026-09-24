@@ -25,9 +25,9 @@ const seed = {
     { id: "p5", jobId: "job-2", number: "P-001", title: "Re-square rear bedroom window", location: "Bedroom 2", trade: "Windows & Doors", priority: "Priority", status: "Open", due: "2026-09-24", reference: "Window schedule W-12", notes: "", source: "PM created", createdAt: "2026-09-22", createdBy: "Chad Harrelson", photo: "" }
   ],
   docs: [
-    { id: "d1", jobId: "job-1", name: "Architectural Plans — Rev 3", type: "PLAN", detail: "28 pages · Current set", uploaded: "2026-09-18", by: "Jacob Davis" },
-    { id: "d2", jobId: "job-1", name: "Truss Placement Layout", type: "TRUSS", detail: "2 pages · Building A", uploaded: "2026-09-18", by: "Jacob Davis" },
-    { id: "d3", jobId: "job-1", name: "Individual Truss Seals", type: "SEALS", detail: "34 seals · Indexed T01–T34", uploaded: "2026-09-18", by: "Jacob Davis" },
+    { id: "d1", jobId: "job-1", name: "Architectural Plans — Rev 3", type: "PLAN", detail: "28 pages · Current set", uploaded: "2026-09-18", by: "Install team" },
+    { id: "d2", jobId: "job-1", name: "Truss Placement Layout", type: "TRUSS", detail: "2 pages · Building A", uploaded: "2026-09-18", by: "Install team" },
+    { id: "d3", jobId: "job-1", name: "Individual Truss Seals", type: "SEALS", detail: "34 seals · Indexed T01–T34", uploaded: "2026-09-18", by: "Install team" },
     { id: "d4", jobId: "job-1", name: "Redlines — First Walk", type: "REDLINE", detail: "6 annotations", uploaded: "2026-09-21", by: "Will Thompson" }
   ],
   walks: [
@@ -46,8 +46,10 @@ const seed = {
 let state = load();
 state.workflow ||= {};
 state.activities = (state.activities || []).map(item => ({ jobId: item.jobId || state.activeJob, ...item }));
+state.docs = (state.docs || []).map(doc => doc.by === "Jacob Davis" ? { ...doc, by: "Install team" } : doc);
 let currentFilter = "All";
 let searchTerm = "";
+let currentJobView = "Active";
 
 const routes = [
   ["dashboard", "⌂", "Dashboard"],
@@ -69,7 +71,8 @@ function load() {
 }
 
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function activeJob() { return state.jobs.find((job) => job.id === state.activeJob) || state.jobs[0]; }
+function activeJobs() { return state.jobs.filter(job => (job.status || "Active") === "Active"); }
+function activeJob() { return state.jobs.find((job) => job.id === state.activeJob) || activeJobs()[0] || state.jobs.find(job => job.status !== "Deleted") || state.jobs[0]; }
 function jobPunches(jobId = state.activeJob) { return state.punches.filter((item) => item.jobId === jobId); }
 function jobWorkflow(jobId = state.activeJob) {
   const job = state.jobs.find(item => item.id === jobId) || activeJob();
@@ -80,6 +83,30 @@ function jobWorkflow(jobId = state.activeJob) {
   return flow;
 }
 function templateAreas(flow = jobWorkflow()) { return FIELD_TEMPLATES[flow.template] || FIELD_TEMPLATES["Framing — first walk"]; }
+function documentRequirements(flow = jobWorkflow()) {
+  if (flow.template === "Windows & doors") return [
+    { label: "Building plans", icon: "▤", match: /plan|architect|construction/i, types: /PLAN|PDF|DWG/ },
+    { label: "Window / door schedule", icon: "▦", match: /window|door|opening|schedule/i, types: /SCHEDULE/ }
+  ];
+  if (flow.template === "Interior trim") return [
+    { label: "Building plans", icon: "▤", match: /plan|architect|construction/i, types: /PLAN|PDF|DWG/ },
+    { label: "Trim plan / schedule", icon: "⌗", match: /trim|interior|finish|schedule|detail/i, types: /SCHEDULE|TRIM/ }
+  ];
+  if (flow.template === "Decks") return [
+    { label: "Building plans", icon: "▤", match: /plan|architect|construction/i, types: /PLAN|PDF|DWG/ },
+    { label: "Deck details", icon: "⌂", match: /deck|ledger|rail|structural|detail/i, types: /DECK|DETAIL/ }
+  ];
+  if (flow.template === "Service / closeout") return [
+    { label: "Work order / scope", icon: "▤", match: /work order|scope|service|warranty|request/i, types: /WORK|SCOPE|PDF/ }
+  ];
+  return [
+    { label: "Building plans", icon: "▤", match: /plan|architect|construction/i, types: /PLAN|PDF|DWG/ },
+    { label: "Truss layout", icon: "⌂", match: /truss.*layout|layout.*truss/i, types: /TRUSS/ },
+    { label: "Truss seals", icon: "✓", match: /truss.*seal|seal.*truss|individual truss/i, types: /SEALS/ }
+  ];
+}
+function requirementReady(requirement, docs) { return docs.some(doc => requirement.match.test(doc.name) || requirement.types.test(doc.type)); }
+function documentsReady(docs, flow = jobWorkflow()) { return documentRequirements(flow).every(requirement => requirementReady(requirement, docs)); }
 function activeArea(flow = jobWorkflow()) { return flow.activeArea || templateAreas(flow).find(area => !flow.areas[area]) || templateAreas(flow)[0]; }
 function logActivity(icon, title, detail, jobId = state.activeJob) { state.activities.unshift({ jobId, icon, title, detail, time: "Just now", at: new Date().toISOString() }); }
 function esc(value = "") { return String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
@@ -99,14 +126,21 @@ function setHeading(eyebrow, title) {
 function render() {
   renderNav();
   const name = route();
+  if (!activeJob() && !["dashboard", "jobs"].includes(name)) {
+    setHeading("Shared team workspace", "No jobs available");
+    app.innerHTML = `<div class="panel empty"><div class="empty-icon">▦</div><h3>Add an active job to continue</h3><p>Documents, site walks, punch lists, and reports are organized by job.</p><button class="button primary" data-action="new-job">＋ Add job</button></div>`;
+    document.body.classList.remove("menu-open");
+    return;
+  }
   ({ dashboard: renderDashboard, jobs: renderJobs, walks: renderWalks, punch: renderPunches, documents: renderDocuments, reports: renderReports }[name] || renderDashboard)();
   document.body.classList.remove("menu-open");
 }
 
 function renderDashboard() {
-  setHeading("Overview", "Good morning, Jacob");
+  setHeading("Overview", "Field operations overview");
   const punches = state.punches;
-  const next = state.jobs[0];
+  const jobs = activeJobs();
+  const next = jobs[0];
   app.innerHTML = `
     <section class="hero">
       <div class="hero-content">
@@ -118,16 +152,16 @@ function renderDashboard() {
           <button class="button" data-action="new-punch">＋ Quick punch item</button>
         </div>
       </div>
-      <div class="walk-card">
+      ${next ? `<div class="walk-card">
         <div class="walk-card-top"><span class="eyebrow" style="color:#8fc2e8">Resume walkthrough</span><span class="status walk">In progress</span></div>
         <h3>${next.lot} · ${next.community}</h3>
         <p>${next.address}<br>First framing walk · ${next.pm}</p>
         <div class="walk-progress"><span style="width:72%"></span></div>
         <div class="walk-meta"><span>12 of 17 areas captured</span><strong>72%</strong></div>
-      </div>
+      </div>` : `<div class="walk-card empty-walk"><strong>No active jobs</strong><p>Add a job to begin a guided field review.</p><a class="button" href="#jobs">Open jobs</a></div>`}
     </section>
     <section class="stat-grid">
-      ${stat("Active jobs", state.jobs.length, "▦", "+2 this week")}
+      ${stat("Active jobs", jobs.length, "▦", `${state.jobs.filter(job => job.status === "Completed").length} completed`)}
       ${stat("Open punch items", openCount(punches), "!", `${punches.filter(p => p.priority === "Hold point" && p.status !== "Verified").length} hold point`)}
       ${stat("Walks this week", state.walks.length, "◉", "84% avg. coverage")}
       ${stat("Verified items", punches.filter(p => p.status === "Verified").length, "✓", "Record complete")}
@@ -135,7 +169,7 @@ function renderDashboard() {
     <section class="split-grid">
       <div class="panel">
         <div class="panel-head"><div><span class="eyebrow">Field schedule</span><h2>Active jobs</h2></div><a class="button small ghost" href="#jobs">View all →</a></div>
-        <div class="job-list">${state.jobs.map(jobRow).join("")}</div>
+        <div class="job-list">${jobs.map(job => jobRow(job)).join("") || `<div class="empty compact"><h3>No active jobs</h3><p>Completed and deleted jobs automatically leave this list.</p></div>`}</div>
       </div>
       <div class="panel activity-panel">
         <div class="panel-head"><div><span class="eyebrow">Documentation trail</span><h2>Recent activity</h2></div></div>
@@ -148,15 +182,15 @@ function stat(label, value, icon, trend) {
   return `<article class="stat-card"><div class="stat-top"><span class="stat-icon">${icon}</span><span class="trend">${trend}</span></div><strong>${value}</strong><small>${label}</small></article>`;
 }
 
-function jobRow(job) {
+function jobRow(job, manage = false) {
   const punches = jobPunches(job.id);
-  return `<div class="job-row" data-job="${job.id}">
+  return `<div class="job-row ${manage ? "managed" : ""}" data-job="${job.id}">
     <span class="job-icon">${esc(job.lot.replace("Lot ", ""))}</span>
     <div class="job-name"><strong>${esc(job.lot)} · ${esc(job.community)}</strong><small>${esc(job.address)}</small></div>
     <div class="job-cell hide-tablet">${esc(job.phase)}<small>${esc(job.builder)}</small></div>
     <div class="job-cell"><span class="status ${openCount(punches) ? "open" : "verified"}">${openCount(punches)} open</span></div>
     <div class="progress-ring" style="--p:${progress(punches)}"><span>${progress(punches)}%</span></div>
-    <button class="icon-button" style="width:30px;height:30px" aria-label="Open job">›</button>
+    ${manage ? `<div class="job-actions"><button class="button small" data-action="open-job" data-id="${job.id}">Open</button>${job.status === "Completed" ? `<button class="button small" data-action="reactivate-job" data-id="${job.id}">Reactivate</button>` : `<button class="button small success" data-action="complete-job" data-id="${job.id}">Complete</button>`}<button class="button small danger" data-action="delete-job" data-id="${job.id}">Delete</button></div>` : `<button class="icon-button" style="width:30px;height:30px" aria-label="Open job">›</button>`}
   </div>`;
 }
 
@@ -165,13 +199,15 @@ function activityRow(item) {
 }
 
 function renderJobs() {
-  setHeading("Work in progress", "Jobs");
+  const jobs = state.jobs.filter(job => job.status === currentJobView || (currentJobView === "Active" && !job.status));
+  setHeading(currentJobView === "Active" ? "Work in progress" : "Job history", "Jobs");
   app.innerHTML = `
     <div class="page-tools"><div class="search-wrap"><span>⌕</span><input id="job-search" placeholder="Search lot, community, builder, or PM"></div><button class="button primary" data-action="new-job">＋ Add job</button></div>
-    <div class="panel"><div class="panel-head"><div><span class="eyebrow">All active work</span><h2>${state.jobs.length} jobs</h2></div></div><div class="job-list">${state.jobs.map(jobRow).join("")}</div></div>`;
+    <div class="filter-row job-view-tabs"><button class="filter ${currentJobView === "Active" ? "active" : ""}" data-job-view="Active">Active · ${activeJobs().length}</button><button class="filter ${currentJobView === "Completed" ? "active" : ""}" data-job-view="Completed">Completed · ${state.jobs.filter(job => job.status === "Completed").length}</button></div>
+    <div class="panel"><div class="panel-head"><div><span class="eyebrow">${currentJobView === "Active" ? "Current field work" : "Completed job history"}</span><h2>${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}</h2></div></div><div class="job-list">${jobs.map(job => jobRow(job, true)).join("") || `<div class="empty compact"><h3>No ${currentJobView.toLowerCase()} jobs</h3><p>${currentJobView === "Active" ? "Add a job to begin tracking field work." : "Jobs marked complete will appear here."}</p></div>`}</div></div>`;
   document.querySelector("#job-search").addEventListener("input", (event) => {
     const q = event.target.value.toLowerCase();
-    document.querySelector(".job-list").innerHTML = state.jobs.filter(job => Object.values(job).join(" ").toLowerCase().includes(q)).map(jobRow).join("") || `<div class="empty"><h3>No matching jobs</h3></div>`;
+    document.querySelector(".job-list").innerHTML = jobs.filter(job => Object.values(job).join(" ").toLowerCase().includes(q)).map(job => jobRow(job, true)).join("") || `<div class="empty"><h3>No matching jobs</h3></div>`;
   });
 }
 
@@ -179,7 +215,7 @@ function renderWalks() {
   const job = activeJob();
   const flow = jobWorkflow();
   const docs = state.docs.filter(doc => doc.jobId === job.id);
-  const hasDocs = docs.length > 0 && flow.revisionConfirmed;
+  const hasDocs = documentsReady(docs, flow) && flow.revisionConfirmed;
   const hasMedia = flow.media.length > 0;
   const hasFindings = flow.suggestions.length > 0;
   const currentStep = !hasDocs ? 1 : !hasMedia ? 2 : !hasFindings ? 3 : 4;
@@ -210,21 +246,18 @@ function workflowRailStep(number, title, detail, complete, current) {
 
 function workflowDocuments(docs, current) {
   const flow = jobWorkflow();
-  const types = new Set(docs.map(doc => doc.type));
-  const readiness = [
-    ["Plan set", [...types].some(type => /PDF|PLAN|DWG/.test(type))],
-    ["Truss layout", docs.some(doc => /truss|layout/i.test(doc.name))],
-    ["Seals / supporting docs", docs.some(doc => /seal|calculation|spec/i.test(doc.name))]
-  ];
+  const requirements = documentRequirements(flow);
+  const ready = documentsReady(docs, flow);
   return `<article class="workflow-card ${current === 1 ? "active" : "complete"}">
-    <div class="workflow-card-head"><span class="step-badge">1</span><div><span class="eyebrow">Start here</span><h3>Choose the walk and confirm documents</h3><p>Set the field template, upload references, and confirm the revision before capturing the site.</p></div><span class="step-state ${docs.length && flow.revisionConfirmed ? "done" : "needed"}">${docs.length && flow.revisionConfirmed ? `✓ Ready` : "Required"}</span></div>
+    <div class="workflow-card-head"><span class="step-badge">1</span><div><span class="eyebrow">Start here</span><h3>Choose the walk and confirm documents</h3><p>Required references automatically change to match the selected field template.</p></div><span class="step-state ${ready && flow.revisionConfirmed ? "done" : "needed"}">${ready && flow.revisionConfirmed ? `✓ Ready` : "Required"}</span></div>
     <div class="setup-grid">
       <label class="compact-field"><span>Job walk template</span><select data-action="select-template">${Object.keys(FIELD_TEMPLATES).map(name => `<option ${flow.template === name ? "selected" : ""}>${esc(name)}</option>`).join("")}</select></label>
-      <div class="readiness-list">${readiness.map(([label, ready]) => `<span class="${ready ? "ready" : "missing"}">${ready ? "✓" : "○"} ${label}</span>`).join("")}</div>
+      <div class="readiness-list">${requirements.map(requirement => { const present = requirementReady(requirement, docs); return `<span class="${present ? "ready" : "missing"}">${present ? "✓" : "○"} ${esc(requirement.label)}</span>`; }).join("")}</div>
     </div>
-    <div class="document-types"><span>▤ Building plans</span><span>⌂ Truss layout</span><span>✓ Truss seals</span><span>✎ Redlines</span><span>＋ Other documents</span></div>
-    ${docs.length ? `<div class="uploaded-list">${docs.slice(-5).map(doc => `<span><strong>${esc(doc.name)}</strong><small>${esc(doc.type)}</small></span>`).join("")}</div>` : `<div class="step-help">Upload the current approved plan set and every document the PM may need during the walk.</div>`}
-    <div class="step-actions"><button class="button ${docs.length ? "" : "primary"}" data-action="upload-doc">${docs.length ? "＋ Add documents" : "↑ Upload plans and documents"}</button>${docs.length ? `<button class="button ${flow.revisionConfirmed ? "success" : "primary"}" data-action="confirm-revision">${flow.revisionConfirmed ? "✓ Current revision confirmed" : "Confirm current revision"}</button>` : ""}</div>
+    <div class="document-types">${requirements.map(requirement => `<span>${requirement.icon} ${esc(requirement.label)}</span>`).join("")}<span>✎ Redlines / notes</span><span>＋ Other documents</span></div>
+    ${docs.length ? `<div class="uploaded-list">${docs.slice(-5).map(doc => `<span><strong>${esc(doc.name)}</strong><small>${esc(doc.type)}</small></span>`).join("")}</div>` : `<div class="step-help">Upload the current documents needed for this ${esc(flow.template.toLowerCase())}.</div>`}
+    ${docs.length && !ready ? `<div class="step-help attention">Add the missing required reference${requirements.filter(requirement => !requirementReady(requirement, docs)).length === 1 ? "" : "s"} before confirming this set.</div>` : ""}
+    <div class="step-actions"><button class="button ${docs.length ? "" : "primary"}" data-action="upload-doc">${docs.length ? "＋ Add documents" : "↑ Upload required documents"}</button>${ready ? `<button class="button ${flow.revisionConfirmed ? "success" : "primary"}" data-action="confirm-revision">${flow.revisionConfirmed ? "✓ Current revision confirmed" : "Confirm current revision"}</button>` : ""}</div>
   </article>`;
 }
 
@@ -312,9 +345,12 @@ function renderReports() {
   const docs = state.docs.filter(doc => doc.jobId === job.id);
   const timeline = state.activities.filter(item => !item.jobId || item.jobId === job.id).slice(0, 12);
   const openItems = items.filter(item => item.status !== "Verified");
+  const generatedOn = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   app.innerHTML = `<div class="page-tools"><div><span class="eyebrow">Complete job record</span><h2 style="margin:5px 0 0">Field documentation packet</h2></div><div class="tool-actions"><button class="button" data-action="closeout-package">Subcontractor closeout</button><button class="button" data-action="print">Save PDF</button><button class="button primary" data-action="share-packet">Share / save packet</button></div></div>
+    <header class="print-brand-header"><img src="assets/bfs-report-logo.svg" alt="Builders FirstSource"><div><strong>INSTALL SERVICES</strong><span>FIELD DOCUMENTATION</span></div></header>
+    <footer class="print-brand-footer"><span>Builders FirstSource Install Services</span><span>Generated ${esc(generatedOn)} · JCom field documentation</span></footer>
     <section class="panel"><div class="panel-body" style="padding:28px">
-      <div class="report-head"><div><span class="eyebrow">JCom field report</span><h2>${esc(job.lot)} · ${esc(job.community)}</h2><p>${esc(job.address)} · ${esc(job.builder)} · ${esc(job.phase)}</p></div><div><strong>${items.length} total items</strong><p>${openCount(items)} requiring action<br>${items.filter(i => i.status === "Verified").length} verified</p></div></div>
+      <div class="report-head"><div><span class="eyebrow">Builders FirstSource · JCom field report</span><h2>${esc(job.lot)} · ${esc(job.community)}</h2><p>${esc(job.address)} · ${esc(job.builder)} · ${esc(job.phase)}</p></div><div><strong>${items.length} total items</strong><p>${openCount(items)} requiring action<br>${items.filter(i => i.status === "Verified").length} verified</p></div></div>
       <div class="report-metrics"><span><strong>${docs.length}</strong>Documents</span><span><strong>${flow.media.length}</strong>Evidence files</span><span><strong>${templateAreas(flow).filter(area => flow.areas[area]).length}/${templateAreas(flow).length}</strong>Areas covered</span><span><strong>${openItems.length}</strong>Closeout items</span></div>
       <section class="report-section"><div class="section-title"><span class="eyebrow">Document register</span><h3>Current references</h3></div><div class="report-table">${docs.map(doc => `<div><strong>${esc(doc.name)}</strong><span>${esc(doc.type)} · ${formatDate(doc.uploaded)}</span></div>`).join("") || "<p>No documents uploaded.</p>"}</div></section>
       <section class="report-section"><div class="section-title"><span class="eyebrow">PM-approved record</span><h3>Punch list</h3></div><div class="punch-grid">${items.map(punchCard).join("") || "<p>No punch items.</p>"}</div></section>
@@ -436,6 +472,33 @@ function startVoicePunch() {
   recognition.onerror = () => showToast("Voice capture stopped — try again or type the item"); recognition.start();
 }
 
+function draftSuggestions(flow = jobWorkflow()) {
+  if (flow.template === "Windows & doors") return [
+    { title: "Opening requires PM verification", location: "Rear elevation", reference: "Window / door schedule", reason: "Compare the captured opening and unit tag to the uploaded schedule.", evidence: "Rear elevation capture · walkthrough frame", approved: false },
+    { title: "Operation or alignment needs review", location: "Interior openings", reference: "Window / door schedule", reason: "Confirm operation, alignment, and visible completion during PM review.", evidence: "Interior opening capture · site photo", approved: false },
+    { title: "Elevation not fully verified", location: "Left elevation", reference: "Building plans", reason: "Add a wider view or close-up before completing the walk.", evidence: "Left elevation capture · limited view", approved: false }
+  ];
+  if (flow.template === "Interior trim") return [
+    { title: "Trim item requires PM verification", location: "Kitchen", reference: "Trim plan / schedule", reason: "Compare the visible installation to the selected trim reference.", evidence: "Kitchen capture · walkthrough frame", approved: false },
+    { title: "Alignment or finish needs review", location: "Main living area", reference: "Interior finish details", reason: "Review the captured transition and alignment before closing the walk.", evidence: "Living area capture · site photo", approved: false },
+    { title: "Room not fully documented", location: "Bedroom", reference: "Building plans", reason: "Add a room overview and detail photo before final review.", evidence: "Bedroom capture · limited view", approved: false }
+  ];
+  if (flow.template === "Decks") return [
+    { title: "Connection requires PM verification", location: "Ledger / house connection", reference: "Deck details", reason: "Compare the visible connection to the uploaded deck detail.", evidence: "Ledger capture · site photo", approved: false },
+    { title: "Rail or stair item needs review", location: "Rails / stairs", reference: "Deck details", reason: "Review visible completion and alignment before closeout.", evidence: "Rail capture · walkthrough frame", approved: false },
+    { title: "Area not fully documented", location: "Posts / beams", reference: "Building plans", reason: "Add a wider view before final PM review.", evidence: "Post / beam capture · limited view", approved: false }
+  ];
+  if (flow.template === "Service / closeout") return [
+    { title: "Reported condition requires PM review", location: "Reported concern", reference: "Work order / scope", reason: "Compare the captured condition with the uploaded service scope.", evidence: "Reported concern · site photo", approved: false },
+    { title: "Correction documentation needed", location: "Completed correction", reference: "Work order / scope", reason: "Add a completion photo and note before closing the item.", evidence: "Correction capture · limited view", approved: false }
+  ];
+  return [
+    { title: "Opening requires PM verification", location: "Kitchen — rear wall", reference: "Architectural plan A3.1", reason: "The walkthrough view should be checked against the uploaded opening detail.", evidence: "Kitchen capture · walkthrough frame", approved: false },
+    { title: "Visible framing item may be incomplete", location: "Main stair — landing", reference: "Plan detail A5.2", reason: "Review the captured area for backing and alignment before closing the walk.", evidence: "Stairs capture · site photo", approved: false },
+    { title: "Area not fully verified in walkthrough", location: "Second floor — bedroom 3", reference: "Truss layout", reason: "Add a closer image of the truss tag and connection before final verification.", evidence: "Second floor capture · limited view", approved: false }
+  ];
+}
+
 function closeModal() { modalRoot.innerHTML = ""; }
 function showToast(message) { toast.textContent = message; toast.classList.add("show"); setTimeout(() => toast.classList.remove("show"), 2300); }
 
@@ -444,13 +507,25 @@ document.addEventListener("click", (event) => {
   const jobEl = event.target.closest("[data-job]");
   const punchEl = event.target.closest("[data-punch]");
   const filterEl = event.target.closest("[data-filter]");
-  if (jobEl) { state.activeJob = jobEl.dataset.job; save(); location.hash = "punch"; }
+  const jobViewEl = event.target.closest("[data-job-view]");
+  if (jobEl && !actionEl) { state.activeJob = jobEl.dataset.job; save(); location.hash = "punch"; }
   if (punchEl) openPunchModal(state.punches.find(item => item.id === punchEl.dataset.punch));
   if (filterEl) { currentFilter = filterEl.dataset.filter; renderPunches(); }
+  if (jobViewEl) { currentJobView = jobViewEl.dataset.jobView; renderJobs(); }
   if (!actionEl) return;
   const action = actionEl.dataset.action;
   if (action === "new-punch") openPunchModal();
   if (action === "new-job") openJobModal();
+  if (action === "open-job") { state.activeJob = actionEl.dataset.id; save(); location.hash = "punch"; }
+  if (action === "complete-job") {
+    const job = state.jobs.find(item => item.id === actionEl.dataset.id);
+    if (job && confirm(`Mark ${job.lot} · ${job.community} complete? It will move out of Active Jobs.`)) { job.status = "Completed"; job.completedAt = new Date().toISOString(); logActivity("✓", "Job completed", `${job.lot} · ${job.community}`, job.id); if (state.activeJob === job.id) state.activeJob = activeJobs().find(item => item.id !== job.id)?.id || activeJobs()[0]?.id || state.jobs.find(item => item.status !== "Deleted")?.id; save(); showToast("Job moved to Completed"); render(); }
+  }
+  if (action === "reactivate-job") { const job = state.jobs.find(item => item.id === actionEl.dataset.id); if (job) { job.status = "Active"; delete job.completedAt; state.activeJob = job.id; logActivity("↻", "Job reactivated", `${job.lot} · ${job.community}`, job.id); save(); showToast("Job returned to Active Jobs"); renderJobs(); } }
+  if (action === "delete-job") {
+    const job = state.jobs.find(item => item.id === actionEl.dataset.id);
+    if (job && confirm(`Permanently delete ${job.lot} · ${job.community} and its JCom records?`)) { const id = job.id; state.jobs = state.jobs.filter(item => item.id !== id); state.punches = state.punches.filter(item => item.jobId !== id); state.docs = state.docs.filter(item => item.jobId !== id); state.walks = state.walks.filter(item => item.jobId !== id); state.activities = state.activities.filter(item => item.jobId !== id); delete state.workflow[id]; if (state.activeJob === id) state.activeJob = activeJobs()[0]?.id || state.jobs.find(item => item.status !== "Deleted")?.id; save(); showToast("Job and associated records deleted"); render(); }
+  }
   if (action === "new-walk") location.hash = "walks";
   if (action === "upload-doc") document.querySelector("#document-input").click();
   if (action === "import-packet") document.querySelector("#packet-input").click();
@@ -468,11 +543,7 @@ document.addEventListener("click", (event) => {
   if (action === "analyze-walk") {
     const flow = jobWorkflow();
     flow.status = "review";
-    flow.suggestions = [
-      { title: "Opening requires PM verification", location: "Kitchen — rear wall", reference: "Architectural plan A3.1", reason: "The walkthrough view should be checked against the uploaded opening detail.", evidence: "Kitchen capture · walkthrough frame", approved: false },
-      { title: "Visible framing item may be incomplete", location: "Main stair — landing", reference: "Plan detail A5.2", reason: "Review the captured area for backing and alignment before closing the walk.", evidence: "Stairs capture · site photo", approved: false },
-      { title: "Area not fully verified in walkthrough", location: "Second floor — bedroom 3", reference: "Truss layout", reason: "Add a closer image of the truss tag and connection before final verification.", evidence: "Second floor capture · limited view", approved: false }
-    ];
+    flow.suggestions = draftSuggestions(flow);
     logActivity("◆", "Draft findings generated", `${flow.suggestions.length} items awaiting PM review`); save(); showToast("Draft review generated — PM approval required"); renderWalks();
   }
   if (action === "approve-suggestion") {
@@ -492,12 +563,12 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("change", event => {
   if (!event.target.matches('[data-action="select-template"]')) return;
-  const flow = jobWorkflow(); flow.template = event.target.value; flow.areas = {}; flow.activeArea = templateAreas(flow)[0]; logActivity("▦", "Walk template selected", flow.template); save(); renderWalks();
+  const flow = jobWorkflow(); flow.template = event.target.value; flow.areas = {}; flow.activeArea = templateAreas(flow)[0]; flow.revisionConfirmed = false; flow.suggestions = []; logActivity("▦", "Walk template selected", `${flow.template} · document requirements updated`); save(); showToast("Template and required documents updated"); renderWalks();
 });
 
 document.querySelector("#document-input").addEventListener("change", (event) => {
   const today = new Date().toISOString().slice(0, 10);
-  [...event.target.files].forEach(file => state.docs.push({ id: `doc-${Date.now()}-${file.name}`, jobId: state.activeJob, name: file.name, type: file.name.split(".").pop().toUpperCase(), detail: `${Math.max(1, Math.round(file.size / 1024))} KB · Uploaded file`, uploaded: today, by: "Jacob Davis" }));
+  [...event.target.files].forEach(file => state.docs.push({ id: `doc-${Date.now()}-${file.name}`, jobId: state.activeJob, name: file.name, type: file.name.split(".").pop().toUpperCase(), detail: `${Math.max(1, Math.round(file.size / 1024))} KB · Uploaded file`, uploaded: today, by: "Install team" }));
   jobWorkflow().status = "documents"; jobWorkflow().revisionConfirmed = false;
   save(); event.target.value = ""; showToast("Documents uploaded — Step 2 is ready"); route() === "walks" ? renderWalks() : renderDocuments();
 });
