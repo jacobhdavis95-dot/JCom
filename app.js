@@ -257,7 +257,7 @@ function workflowDocuments(docs, current) {
     <div class="document-types">${requirements.map(requirement => `<span>${requirement.icon} ${esc(requirement.label)}</span>`).join("")}<span>✎ Redlines / notes</span><span>＋ Other documents</span></div>
     ${docs.length ? `<div class="uploaded-list">${docs.slice(-5).map(doc => `<span><strong>${esc(doc.name)}</strong><small>${esc(doc.type)}</small></span>`).join("")}</div>` : `<div class="step-help">Upload the current documents needed for this ${esc(flow.template.toLowerCase())}.</div>`}
     ${docs.length && !ready ? `<div class="step-help attention">Add the missing required reference${requirements.filter(requirement => !requirementReady(requirement, docs)).length === 1 ? "" : "s"} before confirming this set.</div>` : ""}
-    <div class="step-actions"><button class="button ${docs.length ? "" : "primary"}" data-action="upload-doc">${docs.length ? "＋ Add documents" : "↑ Upload required documents"}</button>${ready ? `<button class="button ${flow.revisionConfirmed ? "success" : "primary"}" data-action="confirm-revision">${flow.revisionConfirmed ? "✓ Current revision confirmed" : "Confirm current revision"}</button>` : ""}</div>
+    <div class="step-actions"><button class="button ${docs.length ? "" : "primary"}" data-action="upload-doc">${docs.length ? "＋ Add files" : "↑ Browse saved files"}</button>${ready ? `<button class="button ${flow.revisionConfirmed ? "success" : "primary"}" data-action="confirm-revision">${flow.revisionConfirmed ? "✓ Current revision confirmed" : "Confirm current revision"}</button>` : ""}</div>
   </article>`;
 }
 
@@ -329,7 +329,7 @@ function renderDocuments() {
     <div class="notice revision-notice ${flow.revisionConfirmed ? "confirmed" : ""}" style="margin-bottom:16px"><strong>${flow.revisionConfirmed ? "✓ Current revision confirmed" : "Revision check needed"}</strong><span> JCom records the files selected by the project team; it does not approve design documents.</span>${docs.length ? `<button class="button small" data-action="confirm-revision">${flow.revisionConfirmed ? "Mark for recheck" : "Confirm current set"}</button>` : ""}</div>
     <section class="doc-grid">
       ${docs.map(docCard).join("")}
-      <button class="doc-card upload-card" data-action="upload-doc"><div><span style="font-size:28px;color:var(--blue)">＋</span><strong>Add job documents</strong><small>PDF, image, or Word files</small></div></button>
+      <button class="doc-card upload-card" data-action="upload-doc"><div><span style="font-size:28px;color:var(--blue)">＋</span><strong>Add files from your device</strong><small>Any saved file type · select multiple</small></div></button>
     </section>`;
 }
 
@@ -568,7 +568,10 @@ document.addEventListener("change", event => {
 
 document.querySelector("#document-input").addEventListener("change", (event) => {
   const today = new Date().toISOString().slice(0, 10);
-  [...event.target.files].forEach(file => state.docs.push({ id: `doc-${Date.now()}-${file.name}`, jobId: state.activeJob, name: file.name, type: file.name.split(".").pop().toUpperCase(), detail: `${Math.max(1, Math.round(file.size / 1024))} KB · Uploaded file`, uploaded: today, by: "Install team" }));
+  [...event.target.files].forEach(file => {
+    const extension = file.name.includes(".") ? file.name.split(".").pop() : file.type?.split("/").pop() || "FILE";
+    state.docs.push({ id: `doc-${Date.now()}-${file.name}`, jobId: state.activeJob, name: file.name, type: extension.toUpperCase(), detail: `${Math.max(1, Math.round(file.size / 1024))} KB · Uploaded file`, uploaded: today, by: "Install team" });
+  });
   jobWorkflow().status = "documents"; jobWorkflow().revisionConfirmed = false;
   save(); event.target.value = ""; showToast("Documents uploaded — Step 2 is ready"); route() === "walks" ? renderWalks() : renderDocuments();
 });
