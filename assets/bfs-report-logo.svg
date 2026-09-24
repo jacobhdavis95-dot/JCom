@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 118" role="img" aria-labelledby="title desc">
+  <title id="title">Builders FirstSource</title>
+  <desc id="desc">Builders FirstSource report wordmark in red and blue.</desc>
+  <rect width="720" height="118" rx="8" fill="#fff"/>
+  <g transform="translate(8 8)">
+    <path d="M6 22 51 2l45 20v58L51 100 6 80Z" fill="#0b3155"/>
+    <path d="M18 29 51 14l33 15v16L51 30 18 45Z" fill="#e1263d"/>
+    <path d="M18 49 51 34l33 15v24L51 88 18 73Z" fill="#fff"/>
+    <path d="M44 43h15v32H44z" fill="#0b3155"/>
+    <path d="M31 58h40v15H31z" fill="#0b3155"/>
+  </g>
+  <g fill="#0b3155" font-family="Arial, Helvetica, sans-serif">
+    <text x="126" y="53" font-size="39" font-weight="800" letter-spacing="-.5">BUILDERS</text>
+    <text x="126" y="94" font-size="39" font-weight="800" letter-spacing="-.5">FIRSTSOURCE</text>
+  </g>
+  <rect x="109" y="15" width="5" height="88" fill="#e1263d"/>
+</svg>
