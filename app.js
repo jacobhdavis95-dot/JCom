@@ -352,8 +352,18 @@ function renderReports() {
     <section class="panel"><div class="panel-body" style="padding:28px">
       <div class="report-head"><div><span class="eyebrow">Builders FirstSource · JCom field report</span><h2>${esc(job.lot)} · ${esc(job.community)}</h2><p>${esc(job.address)} · ${esc(job.builder)} · ${esc(job.phase)}</p></div><div><strong>${items.length} total items</strong><p>${openCount(items)} requiring action<br>${items.filter(i => i.status === "Verified").length} verified</p></div></div>
       <div class="report-metrics"><span><strong>${docs.length}</strong>Documents</span><span><strong>${flow.media.length}</strong>Evidence files</span><span><strong>${templateAreas(flow).filter(area => flow.areas[area]).length}/${templateAreas(flow).length}</strong>Areas covered</span><span><strong>${openItems.length}</strong>Closeout items</span></div>
-      <section class="report-section"><div class="section-title"><span class="eyebrow">Document register</span><h3>Current references</h3></div><div class="report-table">${docs.map(doc => `<div><strong>${esc(doc.name)}</strong><span>${esc(doc.type)} · ${formatDate(doc.uploaded)}</span></div>`).join("") || "<p>No documents uploaded.</p>"}</div></section>
-      <section class="report-section"><div class="section-title"><span class="eyebrow">PM-approved record</span><h3>Punch list</h3></div><div class="punch-grid">${items.map(punchCard).join("") || "<p>No punch items.</p>"}</div></section>
+      <section class="report-section"><div class="section-title"><span class="eyebrow">Document register</span><h3>Current references</h3></div>
+        <div class="formal-table-wrap"><table class="report-formal-table document-register-table">
+          <thead><tr><th>Document</th><th>Type / details</th><th>Uploaded</th><th>Uploaded by</th></tr></thead>
+          <tbody>${docs.map(doc => `<tr><td><strong>${esc(doc.name)}</strong></td><td>${esc(doc.type)}<small>${esc(doc.detail || "Reference file")}</small></td><td>${formatDate(doc.uploaded)}</td><td>${esc(doc.by || "Install team")}</td></tr>`).join("") || `<tr><td colspan="4" class="empty-table-cell">No documents uploaded.</td></tr>`}</tbody>
+        </table></div>
+      </section>
+      <section class="report-section"><div class="section-title"><span class="eyebrow">PM-approved record</span><h3>Formal punch list</h3></div>
+        <div class="formal-table-wrap"><table class="report-formal-table punch-list-table">
+          <thead><tr><th>Item</th><th>Description / location</th><th>Trade / due</th><th>Status / priority</th><th>Reference</th></tr></thead>
+          <tbody>${items.map(item => `<tr><td><strong class="table-item-number">${esc(item.number)}</strong></td><td><strong>${esc(item.title)}</strong><small><b>Location:</b> ${esc(item.location)}</small>${item.notes ? `<small><b>PM notes:</b> ${esc(item.notes)}</small>` : ""}</td><td>${esc(item.trade)}<small><b>Due:</b> ${formatDate(item.due)}</small></td><td><span class="status ${statusClass(item.status)}">${esc(item.status)}</span><small><b>Priority:</b> ${esc(item.priority)}</small></td><td>${esc(item.reference || "Field note")}<small>${esc(item.source || "PM created")}</small></td></tr>`).join("") || `<tr><td colspan="5" class="empty-table-cell">No punch items recorded.</td></tr>`}</tbody>
+        </table></div>
+      </section>
       <section class="report-section timeline-section"><div class="section-title"><span class="eyebrow">Audit history</span><h3>Job timeline</h3></div><div class="timeline">${timeline.map(activityRow).join("") || "<p>No activity recorded.</p>"}</div></section>
       <div class="notice" style="margin-top:20px">This report documents observed field conditions and project-manager actions. It is not an engineering report, inspection certificate, or determination of code compliance.</div>
     </div></section>`;
