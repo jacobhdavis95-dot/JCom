@@ -9,17 +9,17 @@ JCom is intentionally **not** an engineering, inspection, or code-compliance pro
 ## Working MVP
 
 - Dashboard for active jobs, walks, punch status, and activity
-- Job creation and job switching
+- Job creation, active/completed views, reactivation, and deletion
 - Guided site-walk capture checklist
 - Video and photo capture inputs on supported mobile devices
 - Phase-based job walk templates and area-by-area capture progress
-- Document revision readiness confirmation
+- Walk-specific document readiness (framing, windows/doors, trim, decks, and service) and revision confirmation
 - Voice-to-punch capture on supported browsers
 - Evidence-linked PM draft review with approve, edit, follow-up, and not-in-scope decisions
 - Photo markup for stored field-evidence images
 - PM-controlled punch-item creation, editing, assignment, priority, and status
 - Plan/truss/seal/redline document intake
-- Complete job packet with native share, upload-ready JSON save/import, printable PDF, and subcontractor closeout file
+- Complete job packet with native share, upload-ready JSON save/import, Builders FirstSource-branded PDF, and subcontractor closeout file
 - Job activity timeline and offline connection status
 - Browser persistence using `localStorage`
 - Responsive installable PWA shell and offline asset cache
